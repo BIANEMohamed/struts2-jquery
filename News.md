@@ -1,0 +1,1 @@
+<wiki:gadget url="http://google-code-feed-gadget.googlecode.com/svn/trunk/gadget.xml" up\_feeds="http://www.jgeppert.com/category/java/struts2-jquery/feed/" up\_maxFeeds="6" width="600px" height="800px" border="0" />

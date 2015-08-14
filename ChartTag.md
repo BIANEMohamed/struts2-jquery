@@ -1,0 +1,2201 @@
+
+
+# Introduction #
+
+Take a look at the [Showcase](http://struts.jgeppert.com/struts2-jquery-showcase/index.action) to see what this tag provides.
+The Chart Modul is based on the [jquery flot](http://code.google.com/p/flot/) project.
+
+![http://www.jgeppert.com/struts2-jquery/struts2-jquery-charts.png](http://www.jgeppert.com/struts2-jquery/struts2-jquery-charts.png)
+
+For each data series you must specify an [Chart Data Tag](ChartDataTag.md).
+
+To use this Features you need to copy the struts2-jquery-chart-plugin.jar into your WEB-INF/lib path or add it to your maven dependencies.
+
+```
+<dependencies>
+    ...
+    <dependency>
+        <groupId>com.jgeppert.struts2.jquery</groupId>
+        <artifactId>struts2-jquery-plugin</artifactId>
+        <version>X.X.X</version>
+    </dependency>
+    <dependency>
+        <groupId>com.jgeppert.struts2.jquery</groupId>
+        <artifactId>struts2-jquery-chart-plugin</artifactId>
+        <version>X.X.X</version>
+    </dependency>
+    ...
+</dependencies>
+```
+
+# Samples #
+
+## Source for the Java Action used in follwing Examples ##
+```
+public class Charts extends ActionSupport {
+
+  private static final long     serialVersionUID = 4851863957798371834L;
+
+  private List<Point>           points;
+  private List<Point>           pointsWithNull;
+  private List<ListValue>       objList;
+  private Map<Integer, Integer> pointsFromMap;
+  private Map<Date, Integer>    dateFromMap;
+  private String                minTime;
+  private String                maxTime;
+
+  @Actions( {
+      @Action(value = "/charts", results = {
+        @Result(location = "charts.jsp", name = "success")
+      }), @Action(value = "/jsonchartdata", results = {
+        @Result(location = "charts.jsp", name = "success")
+      })
+  })
+  public String execute() throws Exception
+  {
+    points = new LinkedList<Point>();
+
+    points.add(new Point(0, 3));
+    points.add(new Point(4, 8));
+    points.add(new Point(8, 5));
+    points.add(new Point(9, 13));
+
+    pointsWithNull = new LinkedList<Point>();
+
+    pointsWithNull.add(new Point(0, 12));
+    pointsWithNull.add(new Point(7, 12));
+    pointsWithNull.add(null);
+    pointsWithNull.add(new Point(7, 2));
+    pointsWithNull.add(new Point(12, 2));
+
+    pointsFromMap = new HashMap<Integer, Integer>();
+    pointsFromMap.put(2, 5);
+    pointsFromMap.put(3, 6);
+    pointsFromMap.put(4, 7);
+    pointsFromMap.put(5, 8);
+    pointsFromMap.put(6, 7);
+    pointsFromMap.put(7, 6);
+
+    dateFromMap = new TreeMap<Date, Integer>();
+    Calendar calendar = Calendar.getInstance();
+    calendar.add(Calendar.YEAR, -2);
+
+    minTime = "" + calendar.getTime().getTime();
+    System.out.println("minTime : " + minTime);
+
+    Random generator = new Random();
+    for (int i = 1; i <= 24; i++)
+    {
+      dateFromMap.put(calendar.getTime(), generator.nextInt(100));
+      calendar.add(Calendar.MONTH, +1);
+    }
+    maxTime = "" + calendar.getTime().getTime();
+    System.out.println("maxTime : " + maxTime);
+
+    objList = new ArrayList<ListValue>();
+    for (int i = 1; i <= 24; i++)
+    {
+      objList.add(new ListValue("" + i, "" + generator.nextInt(30)));
+    }
+
+    return SUCCESS;
+  }
+
+  public List<Point> getPoints()
+  {
+    return points;
+  }
+
+  public List<Point> getPointsWithNull()
+  {
+    return pointsWithNull;
+  }
+
+  public Map<Integer, Integer> getPointsFromMap()
+  {
+    return pointsFromMap;
+  }
+
+  public Map<Date, Integer> getDateFromMap()
+  {
+    return dateFromMap;
+  }
+
+  public String getMinTime()
+  {
+    return minTime;
+  }
+
+  public String getMaxTime()
+  {
+    return maxTime;
+  }
+
+  public List<ListValue> getObjList()
+  {
+    return objList;
+  }
+}
+```
+
+## Source for the Java Action used in AJAX Examples as JSON Data Provider ##
+```
+public class JsonChartData extends ActionSupport {
+
+  private static final long   serialVersionUID = 6659512910595305843L;
+  private List<ListValue>     objList;
+  private Map<Double, Double> doubleMap;
+
+  @Actions( {
+    @Action(value = "/json-chart-data", results = {
+      @Result(name = "success", type = "json")
+    })
+  })
+  public String execute()
+  {
+
+    objList = new ArrayList<ListValue>();
+    doubleMap = new TreeMap<Double, Double>();
+
+    Random generator = new Random();
+    for (int i = 1; i <= 24; i++)
+    {
+      doubleMap.put(Double.valueOf("" + i), generator.nextDouble() * 10.0);
+    }
+
+    for (int i = 1; i <= 24; i++)
+    {
+      objList.add(new ListValue("" + i, "" + generator.nextInt(30)));
+    }
+
+    return SUCCESS;
+  }
+
+  public String getJSON()
+  {
+    return execute();
+  }
+
+  public List<ListValue> getObjList()
+  {
+    return objList;
+  }
+
+  public void setObjList(List<ListValue> objList)
+  {
+    this.objList = objList;
+  }
+
+  public Map<Double, Double> getDoubleMap()
+  {
+    return doubleMap;
+  }
+
+  public void setDoubleMap(Map<Double, Double> doubleMap)
+  {
+    this.doubleMap = doubleMap;
+  }
+}
+```
+
+
+## Chart with values from a List or a Map ##
+
+This Chart handles List with java.awt.Point Objects and a Map with Integer Values to render ths chart.
+
+```
+<%@ taglib prefix="sjc" uri="/struts-jquery-chart-tags"%>
+
+    <sjc:chart id="chartPoints" cssStyle="width: 600px; height: 400px;">
+    	<sjc:chartData
+    		label="List -Points-"
+    		list="points"
+    		points="{ show: true }"
+    		lines="{ show: true }"
+    	/>
+    	<sjc:chartData
+    		label="List -Points with Null Value-"
+    		list="pointsWithNull"
+    	/>
+    	<sjc:chartData
+    		label="Map -Integer, Integer-"
+    		list="pointsFromMap"
+    	/>
+    </sjc:chart>
+```
+
+## Chart with values from a List with Objects ##
+
+This Chart handle a List of Objects and publish topics when user select a point or hover the grid.
+
+```
+<%@ taglib prefix="sjc" uri="/struts-jquery-chart-tags"%>
+
+<script type="text/javascript">
+	$.subscribe('chartHover', function(event, data) {
+    $("#topicsHover").text(event.originalEvent.pos.x.toFixed(2)+','+event.originalEvent.pos.y.toFixed(2));
+	});
+	$.subscribe('chartClick', function(event, data) {
+		var item = event.originalEvent.item;
+    if (item) {
+      $("#topicsClick").text("You clicked point " + item.dataIndex + " ("+item.datapoint[0]+","+item.datapoint[1]+") in " + item.series.label + ".");
+      event.originalEvent.plot.highlight(item.series, item.datapoint);
+    }
+	});
+</script>
+	<div id="topicsHover"></div>
+	<div id="topicsClick"></div>
+    <sjc:chart
+    	id="chartObjects"
+    	cssStyle="width: 600px; height: 400px;"
+    	onClickTopics="chartClick"
+    	onHoverTopics="chartHover"
+    >
+    	<sjc:chartData
+    		label="List with Objects"
+    		list="objList"
+    		listKey="myKey"
+    		listValue="myValue"
+    		points="{ show: true }"
+    		lines="{ show: true }"
+    		clickable="true"
+    		hoverable="true"
+    	/>
+    </sjc:chart>
+
+
+```
+
+## Chart with Date Values ##
+
+This Chart handle a Date, Integer Map the xaxis is formated as an time axis.
+
+```
+<%@ taglib prefix="sjc" uri="/struts-jquery-chart-tags"%>
+
+    <sjc:chart
+    	id="chartDate"
+    	xaxisMode="time"
+    	xaxisTimeformat="%0m.%y"
+    	xaxisMin="%{minTime}"
+    	xaxisMax="%{maxTime}"
+    	xaxisColor="#666"
+    	xaxisTickSize="[2, 'month']"
+    	xaxisTickColor="#aaa"
+    	xaxisPosition="top"
+    	yaxisPosition="right"
+    	yaxisTickSize="10"
+    	cssStyle="width: 600px; height: 400px;"
+    >
+    	<sjc:chartData
+    		label="Map -Date, Integer-"
+    		list="dateFromMap"
+    		color="#990066"
+    		bars="{ show: true }"
+    	/>
+    </sjc:chart>
+```
+
+
+## Chart with AJAX Data ##
+
+A Chart that loads Data with JSON AJAX request. The Data is reloadable and the Data of the Map example loads only on user interaction.
+
+```
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<%@ taglib prefix="sj" uri="/struts-jquery-tags"%>
+<%@ taglib prefix="sjc" uri="/struts-jquery-chart-tags"%>
+
+	<s:url var="chartDataUrl" action="json-chart-data"/>
+    <sjc:chart
+    	id="chartAjax"
+    	legendLabelBoxBorderColor="#990033"
+    	legendPosition="ne"
+    	legendShow="#ccc"
+    	cssStyle="width: 600px; height: 400px;"
+    >
+    	<sjc:chartData
+    		label="Map -Double, Double-"
+    		href="%{chartDataUrl}"
+    		list="doubleMap"
+    		deferredLoading="true"
+    		reloadTopics="reloadMap"
+    	/>
+    	<sjc:chartData
+    		label="List -ListValue-"
+    		href="%{chartDataUrl}"
+    		list="objList"
+    		listKey="myKey"
+    		listValue="myValue"
+    		reloadTopics="reloadList"
+    	/>
+    </sjc:chart>
+    <sj:a onClickTopics="reloadMap" button="true" buttonIcon="ui-icon-refresh">Load/Reload Map</sj:a>
+    <sj:a onClickTopics="reloadList" button="true" buttonIcon="ui-icon-refresh">Reload List</sj:a>
+```
+
+
+## Pie Chart ##
+
+![http://www.jgeppert.com/struts2-jquery/struts2-jquery-charts-pie.png](http://www.jgeppert.com/struts2-jquery/struts2-jquery-charts-pie.png)
+
+```
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<%@ taglib prefix="sj" uri="/struts-jquery-tags"%>
+<%@ taglib prefix="sjc" uri="/struts-jquery-chart-tags"%>
+
+    <sjc:chart
+    	id="chartPie"
+    	cssStyle="width: 600px; height: 400px;"
+    	pie="true"
+    	pieLabel="true"
+    >
+    	<sjc:chartData
+    		id="pieSerie1"
+    		label="Serie 1"
+    		data="10"
+    	/>
+    	<sjc:chartData
+    		id="pieSerie2"
+    		label="Serie 2"
+    		data="3"
+    	/>
+    	<sjc:chartData
+    		id="pieSerie3"
+    		label="Serie 3"
+    		data="17"
+    	/>
+    	<sjc:chartData
+    		id="pieSerie4"
+    		label="Serie 4"
+    		data="37"
+    	/>
+    </sjc:chart>
+```
+
+
+# Topics #
+
+| **Topic** | **Event** | **Parameter** |
+|:----------|:----------|:--------------|
+| onClickTopics | click     | event.originalEvent.event, event.originalEvent.plot, event.originalEvent.pos, event.originalEvent.item |
+| onHoverTopics | hover     | event.originalEvent.event, event.originalEvent.plot, event.originalEvent.pos, event.originalEvent.item |
+
+# Attributes #
+
+> <table width='100%'>
+<blockquote><tr>
+<blockquote><th align='left' valign='top'><h4>Name</h4></th>
+<th align='left' valign='top'><h4>Required</h4></th>
+<th align='left' valign='top'><h4>Default</h4></th>
+<th align='left' valign='top'><h4>Evaluated</h4></th>
+<th align='left' valign='top'><h4>Type</h4></th>
+<th align='left' valign='top'><h4>Description</h4></th>
+</blockquote></tr>
+<blockquote><tr>
+<blockquote><td align='left' valign='top'>accesskey</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html accesskey attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>autoResize</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If the size of the Placeholder DIV is changed, it will redraw the plot.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>bindOn</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Bind the start of load or effect on element. e.g. button or link</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>crosshair</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>showing a crosshair, thin lines, when the mouse hovers over the plot</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>crosshairColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>crosshair color</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>crosshairLineWidth</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Number</td>
+<td align='left' valign='top'>crosshair line width</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>crosshairMode</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>crosshair mode, 'x', 'y' or 'xy'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>cssClass</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The css class to use for element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>cssErrorClass</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The css error class to use for element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>cssErrorStyle</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The css error style definitions for element to use</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>cssStyle</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The css style definitions for element to use</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>dataType</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Type of the result. e.g. html, xml, text, json, ...</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>deferredLoading</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Defers the initial loading of this element.  The element will not be loaded until one of the reloadTopics is published.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>disabled</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html disabled attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggable</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Enable draggable functionality to the DIV element. Move the draggable object by clicking on it with the mouse and dragging it anywhere within the viewport. </td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableAddClasses</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to false, will prevent the ui-draggable class from being added. This may be desired as a performance optimization when calling draggable init on many hundreds of elements. Default: true</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableAppendTo</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The element passed to or selected by the appendTo option will be used as the draggable helper's container during dragging. By default, the helper is appended to the same container as the draggable. Default: parent</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableAxis</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Constrains dragging to either the horizontal (x) or vertical (y) axis. Possible values: x or y.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableCancel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Prevents dragging from starting on specified elements.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableContainment</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Constrains dragging to within the bounds of the specified element or region. Possible string values: parent, document, window, [x1, y1, x2, y2].</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableCursor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The css cursor during the drag operation.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableDelay</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Time in milliseconds after mousedown until dragging should start. This option can be used to prevent unwanted drags when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableDistance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Distance in pixels after mousedown the mouse must move before dragging should start. This option can be used to prevent unwanted drags when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableHandle</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If specified, restricts drag start click to the specified element(s). e.g. h2</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableHelper</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Allows for a helper element to be used for dragging display. Possible values: original, clone. Default is original</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableIframeFix</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Prevent iframes from capturing the mousemove events during a drag. Useful in combination with cursorAt, or in any case, if the mouse cursor is not over the helper. If set to true, transparent overlays will be placed over all iframes on the page. If a selector is supplied, the matched iframes will have an overlay placed over them. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableOnDragTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered when the mouse is moved during the dragging.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableOnStartTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered when dragging starts.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableOnStopTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered when dragging stops.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableOpacity</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Opacity for the helper while being dragged. e.g. 0.75</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableRefreshPositions</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, all droppable positions are calculated on every mousemove. Caution: This solves issues on highly dynamic pages, but dramatically decreases performance. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableRevert</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If set to true, the element will return to its start position when dragging stops. e.g. true, valid, invalid Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableRevertDuration</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The duration of the revert animation, in milliseconds. Ignored if revert is false.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableScope</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Used to group sets of draggable and droppable items, in addition to droppable's accept option. A draggable with the same scope value as a droppable will be accepted by the droppable.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableScroll</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, container auto-scrolls while dragging.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableScrollSensitivity</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Distance in pixels from the edge of the viewport after which the viewport should scroll. Distance is relative to pointer, not the draggable. Default: 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableScrollSpeed</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The speed at which the window should scroll once the mouse pointer gets within the scrollSensitivity distance. Default: 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableSnap</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, the draggable will snap to the edges of the selected elements when near an edge of the element. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableSnapMode</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Determines which edges of snap elements the draggable will snap to. Ignored if snap is false. Possible values: inner, outer, both. Default: both</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableSnapTolerance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The distance in pixels from the snap element edges at which snapping should occur. Ignored if snap is false. Default: 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>draggableZindex</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>z-index for the helper while being dragged.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppable</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Enable any DIV element to be droppable, a target for draggable elements.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableAccept</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>All draggables that match the jQuery selector will be accepted. e.g. #myid or .myclass</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableActiveClass</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If specified, the class will be added to the droppable while an acceptable draggable is being dragged.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableAddClasses</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>true</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If set to false, will prevent the ui-droppable class from being added. This may be desired as a performance optimization when calling droppable init on many hundreds of elements. Default: true</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableGreedy</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If true, will prevent event propagation on nested droppables. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableHoverClass</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If specified, the class will be added to the droppable while an acceptable draggable is being hovered.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableOnActivateTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered any time an accepted draggable starts dragging. This can be useful if you want to make the droppable 'light up' when it can be dropped on.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableOnDeactivateTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered any time an accepted draggable stops dragging.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableOnDropTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered when an accepted draggable is dropped 'over' this droppable.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableOnOutTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered when an accepted draggable is dragged 'out' this droppable.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableOnOverTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered as an accepted draggable is dragged 'over' this droppable.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableScope</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Used to group sets of draggable and droppable items, in addition to droppable's accept option. A draggable with the same scope value as a droppable will be accepted.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>droppableTolerance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Specifies which mode to use for testing whether a draggable is over a droppable. Possible values: fit, intersect, pointer, touch. </td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>effect</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>none</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Perform a effect on the elements specified in the 'targets' attribute. e.g. bounce, highlight, pulsate, shake, size or transfer. See more details at <a href='http://docs.jquery.com/UI/Effects'>http://docs.jquery.com/UI/Effects</a></td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>effectDuration</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>2000</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Duration of effect in milliseconds. Only valid if 'effect' attribute is set</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>effectMode</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>none</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The Effect Mode. show, hide, toggle, none</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>effectOptions</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>jQuery options for effect, eg 'color : #aaaaaa' for the highlight effect or 'times : 3' for the bounce effect. Only valid if 'effect' attribute is set. See more details at <a href='http://docs.jquery.com/UI/Effects'>http://docs.jquery.com/UI/Effects</a></td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>errorElementId</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This should provide the id of the element into which the error text will be placed when an error ocurrs loading the container. If 'errorTest' is provided, that  wil be used, otherwise the ajax error message text wil be used.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>errorPosition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Define error position of form element (top|bottom)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>errorText</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The text to be displayed on load error. If 'errorElement' is provided, this will display the error in the elemtn (if existing), if not, it will display the error as the contents of this container</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>events</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>click</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Start load or effect on specified event. Possible values are click, dblclick, mouseover, mouseenter, mouseleave. Default: click</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>formIds</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Comma delimited list of form ids for which to serialize all fields during submission when this element is clicked (if multiple forms have overlapping element names, it is indeterminate which will be used)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>href</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The url to be use when this element is clicked</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>id</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>HTML id attribute</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>indicator</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If loading content into a target, Id of element that will be displayed during loading and hidden afterwards (will override settings for the target container)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>javascriptTooltip</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Use JavaScript to generate tooltips</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>key</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the key (name, value, label) for this particular component</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>label</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Label expression used for rendering an element specific label</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>labelSeparator</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>:</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>String that will be appended to the label</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>labelposition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Define label position of form element (top/left)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>legendBackgroundColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>legend background color</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>legendLabelBoxBorderColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>color of label box</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>legendPosition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>ne</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>position of legend. ne, nw, se, sw</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>legendShow</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>true</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>show legend</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>listenTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The comma separated list 'listenTopics' is the list of topic names that is used to trigger a request.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>loadingText</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If loading content into a target, The text to be displayed during load (will be shown if any provided, will override settings for the target container)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>name</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The name to set for element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onAfterValidationTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published after the Ajax validation. event.originalEvent.formvalidate to see if validation passed/failed.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onAlwaysTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published always</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onBeforeTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Topics that are published before a load</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onBlurTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the element is blured</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onChangeTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the element changed</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onClickTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the grid is clicked</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onCompleteTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Topics that are published before after load is completed</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onDisableTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the element disabled</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onEffectCompleteTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when an effect is completed </td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onEnableTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the element is enabled</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onErrorTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Topics that are published on a load error</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onFocusTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the element is focused</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onHoverTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that published when the grid is hovered</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onSuccessTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Topics that are published after a succesful load</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onblur</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'> Set the html onblur attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onchange</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onchange attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onclick</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onclick attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>ondblclick</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html ondblclick attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onfocus</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onfocus attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onkeydown</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onkeydown attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onkeypress</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onkeypress attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onkeyup</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onkeyup attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onmousedown</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onmousedown attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onmousemove</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onmousemove attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onmouseout</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onmouseout attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onmouseover</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onmouseover attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onmouseup</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onmouseup attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>onselect</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html onselect attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>openTemplate</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set template to use for opening the rendered html.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pie</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Display the Chart as a Pie</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieInnerRadius</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>0-1 for percentage of fullsize or a specified pixel length, for creating a donut effect</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieLabel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Display Pie Labels</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieLabelBackgroundColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>any hexidecimal color value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieLabelBackgroundOpacity</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>0-1</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieLabelFormatter</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>a user-defined function that modifies the text/style of the label text. eg. name of a function like this function(label, series){ return '<div>'+label+'<br />'+Math.round(series.percent)+'%</div>'; }</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieLabelRadius</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>auto</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>0-1 for percentage of fullsize, or a specified pixel length</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>pieRadius</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>auto</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>0-1 for percentage of fullsize, or a specified pixel length</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>reloadTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma delimited list of topics that will cause this element to reload</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>requestType</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>POST</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Type of the AJAX Request. POST, GET, PUT</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>requiredLabel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, the rendered element will indicate that input is required</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>requiredPosition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Define required position of required form element (left|right)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizable</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Enable this div element to be resizable. With the cursor grab the right or bottom border and drag to the desired width or height.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableAnimate</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Animates to the final size after resizing. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableAnimateDuration</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Duration time for animating, in milliseconds.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableAnimateEasing</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Easing effect for animating. Default: swing</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableAspectRatio</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, resizing is constrained by the original aspect ratio. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableAutoHide</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, automatically hides the handles except when the mouse hovers over the element. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableContainment</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Constrains resizing to within the bounds of the specified element. Possible values: 'parent', 'document' or an id</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableDelay</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Tolerance, in milliseconds, for when resizing should start. If specified, resizing will not start until after mouse is moved beyond duration. This can help prevent unintended resizing when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableDistance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Tolerance, in pixels, for when resizing should start. If specified, resizing will not start until after mouse is moved beyond distance. This can help prevent unintended resizing when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableGhost</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, a semi-transparent helper element is shown for resizing. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableHandles</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If specified as a string, should be a comma-split list of any of the following: 'n, e, s, w, ne, se, sw, nw, all'. Default: e, s, se</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableHelper</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the css class that will be added to a proxy element to outline the resize during the drag of the resize handle. Once the resize is complete, the original element is sized. e.g. ui-state-highlight</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableMaxHeight</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the maximum height the resizable should be allowed to resize to.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableMaxWidth</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the maximum width the resizable should be allowed to resize to.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableMinHeight</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the minimum height the resizable should be allowed to resize to.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableMinWidth</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the minimum width the resizable should be allowed to resize to.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableOnResizeTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered during the resize, on the drag of the resize handler.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableOnStartTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered at the start of a resize operation.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>resizableOnStopTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event javascript function is triggered at the end of a resize operation.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectable</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Enable a element to be selectable. Draw a box with your cursor to select items. Hold down the Ctrl key to make multiple non-adjacent selections.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableAutoRefresh</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This determines whether to refresh (recalculate) the position and size of each selectee at the beginning of each select operation. If you have many many items, you may want to set this to false and call the refresh method manually. Default: true</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableCancel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Prevents selecting if you start on elements matching the selector. Default: ':input,option'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableDelay</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Time in milliseconds to define when the selecting should start. It helps preventing unwanted selections when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableDistance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Tolerance, in pixels, for when selecting should start. If specified, selecting will not start until after mouse is dragged beyond distance.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableFilter</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The matching child elements will be made selectees (able to be selected). Default: '<b>'</td>
+</blockquote></tr></b><tr>
+<blockquote><td align='left' valign='top'>selectableOnSelectedTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered at the end of the select operation, on each element added to the selection.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableOnSelectingTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered during the select operation, on each element added to the selection.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableOnStartTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered at the beginning of the select operation.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableOnStopTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered at the end of the select operation.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableOnUnselectedTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered at the end of the select operation, on each element removed from the selection.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableOnUnselectingTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered during the select operation, on each element removed from the selection.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>selectableTolerance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Possible values: 'touch', 'fit'. Default: 'touch'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortable</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>Enable a elements to be sortable</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableAppendTo</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Defines where the helper that moves with the mouse is being appended to during the drag. Default: 'parent'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableAxis</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>If defined, the items can be dragged only horizontally or vertically. Possible values:'x', 'y'.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableCancel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Prevents sorting if you start on elements matching the selector. Default: ':input,button'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableConnectWith</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Takes a jQuery selector with items that also have sortables applied. If used, the sortable is now connected to the other one-way, so you can drag from this sortable to the other. e.g. #myothersortable or .myothersortables</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableContainment</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Constrains dragging to within the bounds of the specified element - can be a DOM element, 'parent', 'document', 'window', or a jQuery selector.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableCursor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Defines the cursor that is being shown while sorting.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableCursorAt</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Moves the sorting element or helper so the cursor always appears to drag from the same position. Coordinates can be given as a hash using a combination of one or two keys: top, left, right, bottom.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableDelay</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Time in milliseconds to define when the sorting should start. It helps preventing unwanted drags when clicking on an element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableDistance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Tolerance, in pixels, for when sorting should start. If specified, sorting will not start until after mouse is dragged beyond distance. Can be used to allow for clicks on elements within a handle.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableDropOnEmpty</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If empty allows for an item to be dropped from a linked selectable. Default: true</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableForceHelperSize</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If true, forces the helper to have a size. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableForcePlaceholderSize</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If true, forces the placeholder to have a size. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableGrid</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Snaps the sorting element or helper to a grid, every x and y pixels. Array values: [x, y]</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableHandle</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Restricts sort start click to the specified element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableHelper</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Allows for a helper element to be used for dragging display. The supplied function receives the event and the element being sorted, and should return a DOMElement to be used as a custom proxy helper. Possible values: 'original', 'clone'. Default: 'original'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableItems</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Specifies which items inside the element should be sortable. Default: '> <b>'</td>
+</blockquote></tr></b><tr>
+<blockquote><td align='left' valign='top'>sortableOnActivateTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when using connected lists, every connected list on drag start receives it.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnBeforeStopTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when sorting stops, but when the placeholder/helper is still available.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnChangeTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered during sorting, but only when the DOM position has changed.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnDeactivateTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when sorting was stopped, is propagated to all possible connected lists.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnOutTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when a sortable item is moved away from a connected list.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnOverTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when a sortable item is moved into a connected list.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnReceiveTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when a connected sortable list has received an item from another list.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnRemoveTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when a sortable item has been dragged out from the list and into another.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnSortTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered during sorting.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnStartTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when sorting starts.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnStopTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when sorting has stopped.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOnUpdateTopics</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This event is triggered when the user stopped sorting and the DOM position has changed.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableOpacity</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Defines the opacity of the helper while sorting. From 0.01 to 1</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortablePlaceholder</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Class that gets applied to the otherwise white space.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableRevert</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, the item will be reverted to its new DOM position with a smooth animation. Default: false</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableScroll</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Boolean</td>
+<td align='left' valign='top'>If set to true, the page scrolls when coming to an edge. Default: true</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableScrollSensitivity</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Defines how near the mouse must be to an edge to start scrolling. Default: 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableScrollSpeed</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The speed at which the window should scroll once the mouse pointer gets within the scrollSensitivity distance. Default: 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableTolerance</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>This is the way the reordering behaves during drag. Possible values: 'intersect', 'pointer'. In some setups, 'pointer' is more natural. Default: 'intersect'</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>sortableZindex</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Z-index for element/helper while being sorted. Default: 1000</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tabindex</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html tabindex attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>targets</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>A comma separated list of ids of container elements to load with the contents from the result of this request</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>template</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The template (other than default) to use for rendering the element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>templateDir</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>The template directory.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>timeout</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>3000</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Integer</td>
+<td align='left' valign='top'>jQuery options for timeout. Default is 3000</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>title</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the html title attribute on rendered html element</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tooltip</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Set the tooltip of this particular component</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tooltipConfig</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Deprecated. Use individual tooltip configuration attributes instead.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tooltipCssClass</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>StrutsTTClassic</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>CSS class applied to JavaScrip tooltips</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tooltipDelay</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Classic</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Delay in milliseconds, before showing JavaScript tooltips </td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>tooltipIconPath</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Icon path used for image that will have the tooltip</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>value</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Preset the value of input element.</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>color value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisLabel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Label for X-Axis</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisLabelFontFamily</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>X-Axis Label Font Family. e.g. Arial</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisLabelFontSizePixels</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Number</td>
+<td align='left' valign='top'>X-Axis Label Font Size. e.g. 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisMax</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>maximum value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisMin</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>minimum value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisMode</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>null</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>null or time</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisPosition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>bottom, top, left, right</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisTick</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>number or ticks array. If you want to completely override the tick algorithm, you can specify an array for ticks, either like this: [0, 1.2, 2.4] or like this where the labels are also customized: [[0, 'zero'], [1.2, 'one mark'], [2.4, 'two marks']]</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisTickColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>color value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisTickDecimals</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>auto-detected</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>the number of decimals to display (default is auto-detected).</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisTickSize</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>number or ticks array. If you set it to 2, you'll get ticks at 2, 4, 6, etc. Note that for time series, the format is an array like [2, 'month']</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>xaxisTimeformat</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>format string to use. The following specifiers are supported:   %h: hours,  %H: hours (left-padded with a zero),  %M: minutes (left-padded with a zero),  %S: seconds (left-padded with a zero),  %d: day of month (1-31), use %0d for zero-padding,  %m: month (1-12), use %0m for zero-padding,  %y: year (four digits),  %b: month name (customizable),  %p: am/pm, additionally switches %h/%H to 12 hour instead of 24,  %P: AM/PM (uppercase version of %p)</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>color value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisLabel</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Label for Y-Axis</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisLabelFontFamily</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>Y-Axis Label Font Family. e.g. Arial</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisLabelFontSizePixels</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>Number</td>
+<td align='left' valign='top'>Y-Axis Label Font Size. e.g. 20</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisMax</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>maximum value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisMin</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>minimum value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisMode</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>null</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>null or time</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisPosition</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>bottom, top, left, right</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisTick</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>number or ticks array. If you want to completely override the tick algorithm, you can specify an array for ticks, either like this: [0, 1.2, 2.4] or like this where the labels are also customized: [[0, 'zero'], [1.2, 'one mark'], [2.4, 'two marks']]</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisTickColor</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>color value</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisTickDecimals</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>auto-detected</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>the number of decimals to display (default is auto-detected).</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisTickSize</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>number or ticks array. If you set it to 2, you'll get ticks at 2, 4, 6, etc. Note that for time series, the format is an array like [2, 'month']</td>
+</blockquote></tr>
+<tr>
+<blockquote><td align='left' valign='top'>yaxisTimeformat</td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'></td>
+<td align='left' valign='top'>false</td>
+<td align='left' valign='top'>String</td>
+<td align='left' valign='top'>format string to use. The following specifiers are supported:   %h: hours,  %H: hours (left-padded with a zero),  %M: minutes (left-padded with a zero),  %S: seconds (left-padded with a zero),  %d: day of month (1-31), use %0d for zero-padding,  %m: month (1-12), use %0m for zero-padding,  %y: year (four digits),  %b: month name (customizable),  %p: am/pm, additionally switches %h/%H to 12 hour instead of 24,  %P: AM/PM (uppercase version of %p)</td>
+</blockquote></tr>
+</blockquote></blockquote><blockquote></table>
